@@ -1,0 +1,207 @@
+{% extends "main.html" %}
+{% block title%} 상세페이지 {% endblock %}
+{% block header%} <p class="h2 mb-3">상세 보기</p> {% endblock %}
+
+{% block content %}
+<script>
+  $(document).ready(function(){
+    get_comment_list();
+  });
+
+  function deleteComment(id){
+    $.ajax({
+      url : "{{url_for('board.comment_delete')}}",
+      type : "POST",
+      cache : false,
+      data : {
+        id : id,
+        csrf_token : "{{csrf_token()}}"
+      },
+      success : function(data){
+        if (data["func_request"] == "success"){
+          get_comment_list();
+          alert("삭제가 완료되었습니다.");
+        }
+      },
+      error : function(request, status, error){
+        var msg = "Error: " + request.responseText;
+        console.log(msg);
+        console.log("전송실패");
+      }
+    })
+  }
+
+  function editCommentCancel(id){
+    var html = "";
+    var comment = $('#t'+id).data("comment");
+    html += comment;
+    html+= "  <a onclick='deleteComment(\""+id+"\")'>삭제</a>";
+    html+= " | <span style='color:blue;' onclick='showEditCommentText(\""+id+"\")'>수정</span>";
+    $("#t"+id).html(html);
+  }
+
+  function editedCommentSave(id){
+    // 새로 적은 코멘트 내용을 가져와야 함.
+    var new_comment = $('#i'+id).val();
+    console.log(new_comment);
+    $.ajax({
+      url : "{{url_for('board.comment_edit')}}",
+      type : "POST",
+      cache : false,
+      data : {
+        "id": id,
+        "csrf_token": "{{csrf_token()}}",
+        "comment_content" : new_comment
+      },
+      success : function(data){
+        if(data["func_request"] == "success"){
+            // 새로고침을 위해 코멘트 리스트 함수를 다시 호출한다.
+            get_comment_list();
+            alert("댓글 수정이 완료되었습니다.");
+        }
+      },
+      error : function(request, status, error){
+        var msg = "Error: " + request.responseText
+        console.log(msg);
+        console.log("전송실패");
+      }
+    })
+  }
+
+  function showEditCommentText(id){
+    var html = "";
+    // 기존 내용을 먼저 보여줘야 함.
+    var comment = $('#t'+id).data("comment");
+    html+= "<textarea rows='4' class='form-control' id='i"+id+ "'>" + comment;
+    html+= "</textarea>";
+    // 수정 내용 저장이랑 수정한 내용 취소 있어야 함.
+    html += "<a onclick='editedCommentSave(\""+id+"\")'>저장</a>";
+    html += " | <a onclick='editCommentCancel(\""+id+"\")'>취소</a>";
+    $("#t"+id).html(html);
+  }
+
+  function addComment(){
+    $.ajax({
+      // 코멘트 작성해서 디비에 저장하는 함수 호출
+      url : "{{url_for('board.comment_write')}}",
+      type :"POST",
+      data: $('#commentForm').serialize(),
+      success: function(data){
+        // 코멘트 리스트가 담긴 스크립트 함수 호출
+        get_comment_list(data);
+        // 받아온 댓글 내용은 초기화.
+        $('#comment_content').val("");
+      },
+      error : function(request,status,error){
+          var error_msg = "Error : " + request.responseText;
+          console.log("Failed!!")
+          console.log(error_msg);
+      }
+    })
+  }
+
+  function get_comment_list(data){
+    $.ajax({
+      url : "{{url_for('board.comment_list', posting_id = result.id)}}",
+      type : "GET",
+      cache : false,
+      dataType : 'json',
+      success : function(comment_json){
+          comments = comment_json.lists;
+          // html로 보여주기 위해 빈 html 생성
+          html = "";
+          if (comments.length > 0 ){
+            for (let i=0; i<comments.length; i++){
+              html+= "<div>";
+              html+= "<table class='table'>";
+              html+= "<tr>";
+              html+= "<td width='100'>"+ comments[i].name +"</td>";
+              html+= "<td id='t"+ comments[i].id+"' data-comment='"+comments[i].comment_content+"'>"+ comments[i].comment_content 
+              // 댓글 수정 삭제 기능 html 작성
+              if (comments[i].comment_owner){
+                html+= "  <span onclick='deleteComment(\""+comments[i].id+"\")'>삭제</span>";
+                html+= " | <span style='color:blue;' onclick='showEditCommentText(\""+comments[i].id+"\")'>수정</span>";
+                 }
+              html += "</td>";
+              html+= "<td class='text-right' width='200'>" + comments[i].created + "</td>"
+              html += "</tr> </table> </div>";
+            }
+          }
+          $('#comment_list').html(html);
+          $('#cCnt').html(comments.length);
+        },
+      error : function(request,status, error){
+        var error_msg = "Error : " + request.status + "\n";
+        error_msg += "내용 : " + request.responseText + "\n" + error;
+        console.log(error_msg);
+      }
+    })
+  }
+</script>
+
+<div class="container my-5">
+   <div class="title">
+        <p class="h2">{{result.title}}</p>
+    </div>
+      <p>{{result.author}} | {{result.created | format_datetime}}</p>
+ 
+    <hr/>
+  <div class="contents my-5">
+    {% autoescape false %}{{result.contents}}{% endautoescape %}
+  </div>
+  {% if result.attachFile %}
+  <div>
+    <p><strong>첨부 파일</strong></p>
+    <!-- 다운로드도 받을 수 있게 -->
+    <p><a href="{{url_for('board.board_files',filename=result.attachFile)}}">{{result.attachFile}}</a></p>
+  </div>
+  {% endif %}
+  <hr/>
+  <div class="etc">
+   {{result.view}}
+  </div>
+</div>
+<div class="buttons d-flex justify-content-end mx-2">
+    <a class="btn btn-secondary mx-2" href="{{url_for('board.lists',page=page, search_type=search_type, keyword = keyword)}}">리스트로 돌아가기</a>
+    <br><br>
+    {% if session['id'] == result.writer_id %}
+      <a class="btn btn-danger mx-2" href="{{url_for('board.post_delete', id_n=result.id)}}">글 삭제하기</a>
+      <br><br>
+      <a class="btn btn-primary mx-2" href="{{url_for('board.post_edit', id_n=result.id)}}">글 수정하기</a>
+    {% endif %}
+</div>
+<div class="container my-3">
+  <form name="commentForm" id="commentForm" action="{{url_for('board.comment_write')}}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <input type="hidden" name="posting_id" value="{{ result.id }}"/>
+
+      <div class="input-group">
+        <textarea name="comment_content" id="comment_content" rows="4" class="form-control" aria-label="comment" placeholder="댓글을 입력하세요."></textarea>
+        <div class="input-group-append">
+          <!-- <input class="btn btn-outline-secondary" type="submit" id="write_comment" value="작성하기">  -->
+          <button class="btn btn-outline-secondary" type="button" onclick="addComment()" id="write_comment">작성하기</button>
+        </div>
+      </div>
+  </form>
+
+  <div class="comment_container my-3">
+    <span><strong>댓글</strong></span> <span id="cCnt">0</span>
+      <div id="comment_list" class="my-3">
+        <!-- <table class="table">
+          {% if comments.count() >0 %}
+            {% for c in comments %}
+              <tr>
+                <td width="100">{{ c.name }} </td>
+                <td>
+                  {{c.comment_content}}
+                </td>
+                <td class="text-right" width="200">{{c.created}}</td>
+              </tr>
+            {% endfor %}
+          {% endif %}
+        </table> -->
+      </div>
+  </div>
+</div>
+<hr>
+{% endblock %}

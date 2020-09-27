@@ -1,0 +1,132 @@
+{% extends "main.html" %}
+
+{% block title%} 리스트 페이지 {% endblock %}
+{% block header%} <p class="h2 mb-3">게시판</p> {% endblock %}
+{% block content %}
+{{ JSGlue.include() }}
+<script>
+  function search() {
+    // 검색타입과 검색어 받기
+    var output_search_type = document.getElementById("search_type").value;
+    var output_keyword = document.getElementById("keyword").value;
+ 
+    // 검색 타입이나 검색어가 없을 경우는 기본 화면으로 돌아가야 함.
+    if (output_search_type == "" || output_keyword == "") {
+        self.location.href = Flask.url_for('lists')
+    }
+    else {
+      // 리다이렉트 시키면 됨. 주소는 값이 있으면 list.html?쿼리스트링을 가진 리소스로 get 요청.
+      url = Flask.url_for('board.lists', {"search_type":output_search_type, "keyword":output_keyword});
+      // url = unescape(url)
+      self.location.href = url;
+      // console.log(window.location.href)
+    }
+  }
+  $(document).ready(function() {
+      console.log("right?")
+      $('*[data-href]').on('click', function() {
+          window.location = $(this).data("href");
+        });
+    });
+</script>
+
+<!-- list 함수에서 받아오는 데이터가 0개인지 1개 이상인지 구분하자. -->
+{% if datas.count() > 0 %}
+  <table cellpadding="5" cellspacing="10" class="table table-dark table-bordered table-hover">
+    <thead class="thead-light">
+      <tr>
+        <th scope="col">번호</th>
+        <th scope="col">제목</th>
+        <th scope="col">작가</th>
+        <th scope="col">날짜</th>
+        <th scope="col">조회수</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for data in datas %}
+        <tr data-href="{{url_for('board.board_view',id_n=data._id, page=page, search_type = search_type, keyword= keyword )}}">
+            <td>{{loop.index + ((page-1)*limit) }}</td>
+            <td>{{data.title}}</td>
+            <td>{{data.author}}</td>
+            <td>{{data.created | format_datetime }}</td>
+            <td>{{data.view}}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <!-- 페이지네이션 -->
+  <div class="container d-flex justify-content-center">
+  <ul class="pagination">
+      {% if block_first_pagenum - 1 > 0 %}
+        <li class="page-item">
+        <a class="page-link" href="{{url_for('board.lists',page=block_first_pagenum-1,search_type = search_type, keyword = keyword)}}" aria-label="Previous">이전</a>
+        </li>
+      {% else %}
+      <li class="page-item disabled">
+        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">이전</a>      
+      </li>
+      {% endif %}
+        
+              {% for i in range(block_first_pagenum, block_last_pagenum+1)%}
+                <!-- 페이지 인덱스가 last_page_num보다 크면 보여주지 않음. -->
+                {% if i > last_page_num %}
+                    {{""}}
+                
+                {% else %}
+                    {% if i == page %}
+                    <li class="page-item active"><a class="page-link"><strong>{{ i }}</strong></a></li>
+                    {% else %}
+                      <!-- 현재 페이지 이외에 페이지는 이동할 수 있는 링크가 있어야 함. -->
+                      <li class="page-item">
+                        <a class="page-link" href="{{url_for('board.lists',page=i, search_type = search_type, keyword = keyword)}}">{{ i }}</a>
+                      </li>
+                    {% endif %}
+                {% endif %}
+              {% endfor %}
+
+      {% if block_last_pagenum < last_page_num %}
+      <li class="page-item">
+        <a class="page-link" href="{{url_for('board.lists',page=block_last_pagenum+1, search_type = search_type, keyword = keyword)}}">다음</a>
+      </li>
+      {% else %}
+        <li class="page-item disabled">
+          <a class="page-link" href="#" tabindex="-1" aria-disabled="true">다음</a>      
+        </li>
+      {% endif %}
+    {% else %}
+      <h3>데이터가 없습니다.</h3>
+    {% endif %}
+</ul>
+</div>
+
+<div class="d-flex justify-content-end">
+  <a class="btn btn-primary" href="{{ url_for('board.board_write') }}">글 작성</a>
+</div>
+
+<br><br>
+<div class="form-inline">
+    <div class="input-group">
+      <div class="input-group-prepend pr-2">
+        <select name="search_type" id="search_type">
+          <option class="btn btn-outline-secondary dropdown-toggle" value="" {% if search_type == '' or search_type == -1 %} selected {% endif %}>검색유형</option>
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <option class="dropdown-item" value="0" {% if search_type == 0 %} selected {% endif %}>제목</option>
+            <option class="dropdown-item" value="1" {% if search_type == 1 %} selected {% endif %}>내용</option>
+            <option class="dropdown-item" value="2" {% if search_type == 2 %} selected {% endif %}>제목+내용</option>
+            <option class="dropdown-item" value="3" {% if search_type == 3 %} selected {% endif %}>글쓴이</option>
+          </div>
+        </select>
+      </div>
+      <input class="form-control mx-sm-3" type="text" name="keyword" id="keyword" 
+          {% if keyword != "" %}
+            value = {{keyword}}
+          {% endif %}
+      >
+      <input class="btn btn-primary pr-2" type="submit" value = "검색" onclick="search()">
+    </div>
+  
+     
+</div>
+
+
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "main.html" %}
+
+{% block title%} 회원가입 {% endblock %}
+{% block content %}
+<script>
+
+  function checkform() {
+
+    if($.trim($('#name').val()) == ''){
+      alert("이름을 입력하세요.");
+      $('#name').focus();
+      return false;
+    }
+    else if ($.trim($('#email').val()) == ''){
+      alert("이메일을 입력하세요.");
+      $('#email').focus();
+      return false;
+    }
+    else if (validateEmail($.trim($('#email').val())) == false){
+      alert("이메일 형식이 올바르지 않습니다.");
+      $('#email').focus();
+      return false;
+    }
+    else if ($.trim($('#password').val()) == ''){
+      alert("비밀번호를 입력하세요.");
+      $('#password').focus();
+      return false;
+    }
+    else if ($.trim($('#password2').val()) == ''){
+      alert("비밀번호 확인을 입력하세요.");
+      $('#password2').select().focus();
+      return false;
+    }
+    else {return true;}
+  }
+</script>
+
+<table cellpadding="10">
+  <form action="{{url_for('member.member_join')}}" method="POST" name="form" onsubmit="return checkform()">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <thead>
+      <caption>회원가입</caption>
+    </thead>
+    
+    <tbody>
+        <tr>
+          <td>이름</td>
+          <td><input id="name" type="text" name="name"></td>
+        </tr>
+        <tr>
+          <td>이메일</td>
+          <td><input id="email" type="text" name="email"></td>
+        </tr>
+        <tr>
+          <td>비밀번호</td>
+          <td><input id="password" type="password" name="password"></td>
+        </tr>
+        <tr>
+          <td>비밀번호 확인</td>
+          <td><input id="password2" type="password" name="password2"></td>
+        </tr>
+        <tr >
+          <td colspan="2"><input type="submit" value="회원가입"></td>
+        </tr>
+    </tbody>
+  </form>
+</table>
+{% endblock %}

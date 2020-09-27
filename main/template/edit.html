@@ -1,0 +1,102 @@
+{% extends "main.html" %}
+
+{% block title%} 수정하기 {% endblock %}
+{% block content %}
+
+<script>
+  $(document).ready(function() {
+  $('#summernote').summernote({
+      height: 200,                 // 에디터 높이
+		  minHeight: null,             // 최소 높이
+		  maxHeight: null,             // 최대 높이
+		  focus: true,                  // 에디터 로딩후 포커스를 맞출지 여부
+      lang: "ko-KR",		
+      // 이미지 업로드가 끝나고 실행시킬 콜백함수 설정
+      callbacks:{
+        onImageUpload: function(images){
+          for(i=0; i < images.length; i++){
+            uploadImage(images[i]);
+          }
+        }
+      }
+   });
+  });
+
+  function uploadImage(image) {
+    var data = new FormData();
+    console.log(data);
+    data.append("image", image)
+    console.log("afterAppend:", data);
+    var csrf_token = "{{ csrf_token() }}";
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrf_token);
+            }
+        }
+    });
+    $.ajax({
+      // 요청할 url. 이미지의 절대 경로가 나옴.
+      url : "{{url_for('board.upload_image')}}",
+      cache : false,
+      type: 'POST',
+      // 파일을 전송할 때 multipart/form-data로 전송하게되는데 false로 해야 그게 됨.
+      contentType : false,
+          // processData에 대해서는 조금 더 알아보기
+      processData : false,
+      data: data,
+      // 이미지 보낸 다음에 서버에서 처리하고 다시 리턴 성공하면 해야하는 것, 인자로 받는 url은 이미지 파일 주소.
+      success: function(url){
+      var image = $("<img>").attr("src",url).css('max-width','600px')
+      // console.log("type:",typeof(image));
+      // image는 object라서 인덱스를 걸어줘야 한다. 안 그러면 toUpperCase 에러가 난다!
+      $('#summernote').summernote('insertNode', image[0]);
+      },
+      error : function(data){
+        console.log("error : ",data);
+        alert("error : ", data);
+      }
+      
+    })
+  }
+</script>
+
+      <form action="{{url_for('board.post_edit', id_n=data._id)}}" method="post" name="form" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+            <label for="name">작성자</label>
+            <input class="form-control" type="text" name="name" value="{{session['name']}}" readonly>
+        </div>
+        <div class="form-group">
+            <label for="title">제목</label>
+            <td><input class="form-control" type="text" name="title" value="{{data.title}}"></td>
+        </div>
+        <div class="form-group">
+          <label for="contents">내용</label>
+          <textarea rows="8" class="form-control" id="summernote" name="contents">{{data.contents}}</textarea>
+        </div>
+        {% if data.attachFile %}
+          <div class="form-check text-right">
+            <input type="checkbox" class="form-check-input" name="deleteoldFile" id="deleteoldFile">
+            <label for="deleteoldFile" class="form-check-label">첨부파일 삭제 ({{data.attachFile}})</label>
+          </div>
+          <div class="custom-file form-group">
+            <input class="custom-file-input" id="customFile" type="file" name="attachFile">
+            <label class="custom-file-label" for="customFile">{{data.attachFile}}</label>            
+          </div>
+        {% else%}
+            <div class="custom-file form-group">
+              <input class="custom-file-input" id="customFile" type="file" name="attachFile">
+              <label class="custom-file-label" for="customFile">파일 선택</label>            
+            </div>
+        {% endif %}
+       
+        <div class="text-center my-3">
+          <input class="btn btn-primary" type="submit" value="제출하기">
+        </div>
+ 
+      </form>
+
+
+{% endblock %}
